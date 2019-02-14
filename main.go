@@ -13,7 +13,7 @@ import (
 
 //const w = 1024
 //const h = 512
-const fov = 30
+const fov = 90
 
 func main() {
 
@@ -36,8 +36,15 @@ func main() {
 			0, 0, -1, 0,
 		}),
 		scale: mat.NewDense(4, 4, []float64{
-			50, 0, 0, 0,
-			0, 50, 0, 0,
+			-500, 0, 0, 0,
+			0, -500, 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1,
+		}),
+		// TODO update based on window
+		translation: mat.NewDense(4, 4, []float64{
+			1, 0, 0, 0,
+			0, 1, 0, 0,
 			0, 0, 1, 0,
 			0, 0, 0, 1,
 		}),
@@ -51,17 +58,11 @@ func main() {
 		shaders:           []shaders.Shader{shaders.ShadeEdges{&color.RGBA{0, 0, 0, 0}}},
 		nearClippingPlane: -1, farClippingPlane: -10,
 	}
-	myScene.projectionUpdater = myScene.PerspectiveTransform
-	obj := objects.ReadFromObj("/Users/jonathan/Desktop/objs/cube.obj")
-	//obj.Transformations = append(obj.Transformations, mat.NewDense(4, 4, []float64{
-	//	1, 0, 0, 2,
-	//	0, 1, 0, 2,
-	//	0, 0, 1, 0,
-	//	0, 0, 0, 1,
-	//}))
+	myScene.updater = myScene.SceneUpdater
+	obj := objects.ReadFromObj("/Users/jonathan/Desktop/objs/icosphere.obj")
 	obj.Transformations = mat.NewDense(4, 4, []float64{
-		1, 0, 0, 5,
-		0, 1, 0, 5,
+		1, 0, 0, 0,
+		0, 1, 0, 0,
 		0, 0, 1, 0,
 		0, 0, 0, 1,
 	})
@@ -74,7 +75,7 @@ func main() {
 			x, y := myDisplay.GetDimensions()
 			frame := genBlankCanvas(x, y)
 			// TODO this probably doesn't actually need to occur every frame
-			myScene.projectionUpdater(float64(x), float64(y), fov)
+			myScene.updater(float64(x), float64(y), fov)
 			myScene.drawObjects(frame)
 			imageChannel <- frame
 			myDisplay.Refresh()
