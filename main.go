@@ -59,13 +59,13 @@ func main() {
 		nearClippingPlane: -1, farClippingPlane: -10,
 	}
 	myScene.updater = myScene.SceneUpdater
-	obj := objects.ReadFromObj("/Users/jonathan/Desktop/objs/icosphere.obj")
-	obj.Transformations = mat.NewDense(4, 4, []float64{
-		1, 0, 0, 0,
-		0, 1, 0, 0,
-		0, 0, 1, 0,
-		0, 0, 0, 1,
-	})
+	obj := objects.ReadFromObj("/Users/jonathan/Desktop/objs/cube.obj")
+	//obj.Transformations = append(obj.Transformations,
+	//	(&animations.SnapMove{
+	//		0, 0, -1, 2, 0, -1, 10,
+	//		func() float64 {
+	//			return float64(time.Now().Nanosecond()) / 1e9
+	//		}}).GetTransformation)
 	myScene.objects = append(myScene.objects, obj)
 
 	go func() {

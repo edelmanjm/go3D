@@ -26,8 +26,16 @@ func (s Scene) drawObjects(canvas *image.RGBA) {
 	fastDenseMatMul4x4_4x4(screenspace, s.translation, s.scale)
 	for _, object := range s.objects {
 		// FIXME z-normalization messing with faceVector?
-		objectMat := mat.NewDense(4, 4, nil)
-		fastDenseMatMul4x4_4x4(objectMat, object.Transformations, s.projection)
+		objectMat := mat.NewDense(4, 4, []float64{
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1,
+		})
+		for _, transformationFunc := range object.Transformations {
+			fastDenseMatMul4x4_4x4(objectMat, objectMat, transformationFunc())
+		}
+		fastDenseMatMul4x4_4x4(objectMat, objectMat, s.projection)
 		//objectMat := mat.DenseCopyOf(object.Transformations)
 		for _, face := range object.Faces {
 			for i, vertex := range face.RawVertices {
@@ -37,7 +45,6 @@ func (s Scene) drawObjects(canvas *image.RGBA) {
 				face.TransformedVertices[i].Set(1, 0, face.TransformedVertices[i].At(1, 0)/w)
 				face.TransformedVertices[i].Set(2, 0, face.TransformedVertices[i].At(2, 0)/w)
 			}
-			// Check culling; if it should be culled, set the first boi in transformedveriticies to nil
 			if face.Visibility != objects.BOTH {
 				u := mat.NewDense(4, 1, nil)
 				u.Sub(face.TransformedVertices[1], face.TransformedVertices[0])

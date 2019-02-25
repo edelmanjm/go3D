@@ -14,7 +14,7 @@ type Triangle struct {
 
 type VertexObject struct {
 	Faces           []*Triangle
-	Transformations *mat.Dense
+	Transformations []func() *mat.Dense
 }
 
 type Sideness uint8
