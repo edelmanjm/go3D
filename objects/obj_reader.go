@@ -11,17 +11,8 @@ import (
 func ReadFromObj(path string) VertexObject {
 
 	object := VertexObject{
-		Faces: make([]*Triangle, 0),
-		Transformations: []func() *mat.Dense{
-			func() *mat.Dense {
-				return mat.NewDense(4, 4, []float64{
-					1, 0, 0, 0,
-					0, 1, 0, 0,
-					0, 0, 1, 0,
-					0, 0, 0, 1,
-				})
-			},
-		},
+		Faces:           make([]*Triangle, 0),
+		Transformations: []func() *mat.Dense{},
 	}
 
 	vertices := make([]*mat.Dense, 0)
@@ -75,7 +66,7 @@ func ReadFromObj(path string) VertexObject {
 					mat.NewDense(4, 1, nil),
 					mat.NewDense(4, 1, nil),
 				},
-				Visibility: FRONT,
+				Visibility: BOTH,
 			})
 		}
 	}

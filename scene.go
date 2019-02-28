@@ -5,6 +5,7 @@ import (
 	"./shaders"
 	"gonum.org/v1/gonum/mat"
 	"image"
+	"log"
 	"math"
 )
 
@@ -32,10 +33,12 @@ func (s Scene) drawObjects(canvas *image.RGBA) {
 			0, 0, 1, 0,
 			0, 0, 0, 1,
 		})
+		// FIXME don't do all these copies
 		for _, transformationFunc := range object.Transformations {
-			fastDenseMatMul4x4_4x4(objectMat, objectMat, transformationFunc())
+			fastDenseMatMul4x4_4x4(objectMat, mat.DenseCopyOf(objectMat), transformationFunc())
 		}
-		fastDenseMatMul4x4_4x4(objectMat, objectMat, s.projection)
+
+		fastDenseMatMul4x4_4x4(objectMat, mat.DenseCopyOf(objectMat), s.projection)
 		//objectMat := mat.DenseCopyOf(object.Transformations)
 		for _, face := range object.Faces {
 			for i, vertex := range face.RawVertices {
@@ -84,7 +87,8 @@ func (s Scene) drawObjects(canvas *image.RGBA) {
 
 			if face.DoDraw {
 				for _, vertex := range face.TransformedVertices {
-					fastDenseMatMul4x4_4x1(vertex, screenspace, vertex)
+					// FIXME remove copy
+					fastDenseMatMul4x4_4x1(vertex, screenspace, mat.DenseCopyOf(vertex))
 					w := vertex.At(3, 0)
 					vertex.Set(0, 0, vertex.At(0, 0)/w)
 					vertex.Set(1, 0, vertex.At(1, 0)/w)
@@ -128,6 +132,9 @@ func (s Scene) SceneUpdater(width, height, fov float64) {
 }
 
 func fastDenseMatMul4x4_4x4(receiver, a, b *mat.Dense) {
+	if a == receiver || b == receiver {
+		log.Fatal("Receiver is also arg")
+	}
 	for r := 0; r <= 3; r++ {
 		for c := 0; c <= 3; c++ {
 			receiver.Set(r, c,
@@ -140,6 +147,9 @@ func fastDenseMatMul4x4_4x4(receiver, a, b *mat.Dense) {
 }
 
 func fastDenseMatMul4x4_4x1(receiver, a, b *mat.Dense) {
+	if a == receiver || b == receiver {
+		log.Fatal("Receiver is also arg")
+	}
 	for r := 0; r <= 3; r++ {
 		receiver.Set(r, 0,
 			a.At(r, 0)*b.At(0, 0)+
