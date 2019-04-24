@@ -1,9 +1,9 @@
 package display
 
 import (
-	"github.com/fyne-io/fyne"
-	"github.com/fyne-io/fyne/canvas"
-	"github.com/fyne-io/fyne/desktop"
+	"fyne.io/fyne"
+	"fyne.io/fyne/app"
+	"fyne.io/fyne/canvas"
 	"image"
 	"image/color"
 	"strconv"
@@ -28,8 +28,8 @@ func (d *DisplayWindow) Refresh() {
 	d.window.Canvas().Refresh(d.canvas)
 }
 
-func (d *DisplayWindow) RenderImage(px, py, w, h int) color.Color {
-	return d.latestImage.At(px, py)
+func (d *DisplayWindow) RenderImage(w, h int) image.Image {
+	return d.latestImage
 }
 
 func (d *DisplayWindow) Start() {
@@ -37,7 +37,7 @@ func (d *DisplayWindow) Start() {
 }
 
 func (d *DisplayWindow) GetDimensions() (x, y int) {
-	return d.canvas.CurrentSize().Width, d.canvas.CurrentSize().Height
+	return d.canvas.Size().Width, d.canvas.Size().Height
 }
 
 func (d *DisplayWindow) SetFrametime(frametime float64) {
@@ -46,7 +46,7 @@ func (d *DisplayWindow) SetFrametime(frametime float64) {
 
 // TODO any way to specify this in the interface?
 func CreateDisplay(imageChannel chan *image.RGBA) *DisplayWindow {
-	window := desktop.NewApp().NewWindow("Display")
+	window := app.New().NewWindow("Display")
 	display := &DisplayWindow{window: window}
 	display.canvas = canvas.NewRaster(display.RenderImage)
 	go func() {

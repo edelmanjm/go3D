@@ -1,3 +1,2 @@
-Renderer needs to do the culling: At the beginning of the function, we compute the dot product of the triangle's normal with the the ray direction. If this dot product is lower than 0, it means that the two vectors are pointing in opposite directions. Thus, the surface is front-facing. If the dot product is greater than 0 the vectors are pointing in the same direction. We are looking at the inside of the surface (or the back of it, it's back-facing). If the primitive was declared single-sided, it shouldn't then be visible.
-
 Actually have the camera respond with real things
+go tool pprof --pdf go3D cpu.pprof > cpu.pdf

@@ -3,6 +3,7 @@ package main
 import (
 	"./display"
 	"./objects"
+	"./objects/transformations"
 	"./objects/transformations/animations"
 	"./shaders"
 	"github.com/pkg/profile"
@@ -14,7 +15,7 @@ import (
 
 //const w = 1024
 //const h = 512
-const fov = 90
+const fov = 30
 
 func main() {
 
@@ -37,12 +38,11 @@ func main() {
 			0, 0, -1, 0,
 		}),
 		scale: mat.NewDense(4, 4, []float64{
-			500, 0, 0, 0,
-			0, -500, 0, 0,
+			768, 0, 0, 0,
+			0, -768, 0, 0,
 			0, 0, 1, 0,
 			0, 0, 0, 1,
 		}),
-		// TODO update based on window
 		translation: mat.NewDense(4, 4, []float64{
 			1, 0, 0, 0,
 			0, 1, 0, 0,
@@ -58,16 +58,48 @@ func main() {
 		},
 		shaders:           []shaders.Shader{shaders.ShadeEdges{&color.RGBA{0, 0, 0, 0}}},
 		nearClippingPlane: -1, farClippingPlane: -10,
+		viewType: PERSPECTIVE,
 	}
 	myScene.updater = myScene.SceneUpdater
-	obj := objects.ReadFromObj("/Users/jonathan/Desktop/objs/cube.obj")
+
+	obj := objects.ReadFromObj("/Users/jonathan/Desktop/objs/deathmonkey.obj")
+	//obj.Transformations = append(obj.Transformations, (&transformations.Translation{0, -3, 0}).GetTransformation)
 	obj.Transformations = append(obj.Transformations,
-		(&animations.SnapMove{
-			0, 0, -1, 2, 0, -1, 10,
+		(&animations.SingleAxisSpin{
+			mat.NewVecDense(3, []float64{
+				0, 1, 0,
+			}),
+			10,
 			func() float64 {
-				return float64(time.Now().Nanosecond()) / 1e9
+				return float64(time.Now().UnixNano()) / 1e9
 			}}).GetTransformation)
+	obj.Transformations = append(obj.Transformations, (transformations.RotationFromEulerAngles(0, 0, 10)).GetTransformation)
+	obj.Transformations = append(obj.Transformations, (&transformations.Translation{0, 0, -3}).GetTransformation)
 	myScene.objects = append(myScene.objects, obj)
+
+	//obj := objects.ReadFromObj("/Users/jonathan/Desktop/objs/fox.obj")
+	//obj.Transformations = append(obj.Transformations, (&transformations.Translation{0, -2, -10}).GetTransformation)
+	//obj.Transformations = append(obj.Transformations, (transformations.RotationFromAxisAngle(mat.NewVecDense(3, []float64{0, 1, 0}), math.Pi / 2)).GetTransformation)
+	//obj.Transformations = append(obj.Transformations, (&transformations.Translation{10, 0, 0}).GetTransformation)
+	//myScene.objects = append(myScene.objects, obj)
+
+	//planet1 := objects.ReadFromObj("/Users/jonathan/Desktop/objs/icosphere.obj")
+	//planet1.Transformations = append(planet1.Transformations, (&animations.SingleAxisSpin{
+	//	mat.NewVecDense(3, []float64{0, 1, 0}),
+	//	10,
+	//	func() float64 {
+	//		return float64(time.Now().UnixNano()) / 1e9
+	//	},
+	//}).GetTransformation)
+	//planet1.Transformations = append(planet1.Transformations, (&transformations.Translation{0, 0, -2}).GetTransformation)
+	//planet1.Transformations = append(planet1.Transformations, (&animations.SingleAxisSpin{
+	//	mat.NewVecDense(3, []float64{0, 1, 0}),
+	//	10,
+	//	func() float64 {
+	//		return float64(time.Now().UnixNano()) / 1e9
+	//	},
+	//}).GetTransformation)
+	//myScene.objects = append(myScene.objects, planet1)
 
 	go func() {
 		var lastTime time.Time

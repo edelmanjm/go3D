@@ -1,10 +1,10 @@
 package animations
 
 import (
+	".."
 	"gonum.org/v1/gonum/mat"
 	"math"
 )
-import ".."
 
 type SnapMove struct {
 	X0, Y0, Z0,

@@ -10,12 +10,14 @@ import (
 )
 
 type Scene struct {
+	// TODO refactor type to func()*mat.Dense
 	projection, scale, translation      *mat.Dense
 	objects                             []objects.VertexObject
 	shaders                             []shaders.Shader
 	camera                              Camera
 	updater                             func(width, height, fov float64)
 	nearClippingPlane, farClippingPlane float64
+	viewType                            ViewType
 }
 
 func (s Scene) addObject(o objects.VertexObject) {
@@ -24,7 +26,7 @@ func (s Scene) addObject(o objects.VertexObject) {
 
 func (s Scene) drawObjects(canvas *image.RGBA) {
 	screenspace := mat.NewDense(4, 4, nil)
-	fastDenseMatMul4x4_4x4(screenspace, s.translation, s.scale)
+	fastDenseMatMul4x4By4x4(screenspace, s.translation, s.scale)
 	for _, object := range s.objects {
 		// FIXME z-normalization messing with faceVector?
 		objectMat := mat.NewDense(4, 4, []float64{
@@ -34,15 +36,38 @@ func (s Scene) drawObjects(canvas *image.RGBA) {
 			0, 0, 0, 1,
 		})
 		// FIXME don't do all these copies
-		for _, transformationFunc := range object.Transformations {
-			fastDenseMatMul4x4_4x4(objectMat, mat.DenseCopyOf(objectMat), transformationFunc())
-		}
+		// Could use .Product() but it seems like it kinda sucks and it's a pain in the butt to use
 
-		fastDenseMatMul4x4_4x4(objectMat, mat.DenseCopyOf(objectMat), s.projection)
-		//objectMat := mat.DenseCopyOf(object.Transformations)
+		if len(object.Transformations) >= 2 {
+			a := mat.DenseCopyOf(objectMat)
+			b := mat.NewDense(4, 4, nil)
+			i := 0
+			for _, mat := range object.Transformations {
+				if i%2 == 0 {
+					fastDenseMatMul4x4By4x4(b, mat(), a)
+				} else {
+					fastDenseMatMul4x4By4x4(a, mat(), b)
+				}
+				i++
+			}
+			if i%2 == 0 {
+				objectMat = a
+			} else {
+				objectMat = b
+			}
+		} else {
+			for _, transformationFunc := range object.Transformations {
+				fastDenseMatMul4x4By4x4(objectMat, transformationFunc(), mat.DenseCopyOf(objectMat))
+			}
+		}
+		switch s.viewType {
+		case ORTHOGRAPHIC:
+		case PERSPECTIVE:
+			fastDenseMatMul4x4By4x4(objectMat, s.projection, mat.DenseCopyOf(objectMat))
+		}
 		for _, face := range object.Faces {
 			for i, vertex := range face.RawVertices {
-				fastDenseMatMul4x4_4x1(face.TransformedVertices[i], objectMat, vertex)
+				fastDenseMatMul4x4By4x1(face.TransformedVertices[i], objectMat, vertex)
 				w := face.TransformedVertices[i].At(3, 0)
 				face.TransformedVertices[i].Set(0, 0, face.TransformedVertices[i].At(0, 0)/w)
 				face.TransformedVertices[i].Set(1, 0, face.TransformedVertices[i].At(1, 0)/w)
@@ -50,24 +75,29 @@ func (s Scene) drawObjects(canvas *image.RGBA) {
 			}
 			if face.Visibility != objects.BOTH {
 				u := mat.NewDense(4, 1, nil)
-				u.Sub(face.TransformedVertices[1], face.TransformedVertices[0])
+				fastDenseMatSub(u, face.TransformedVertices[1], face.TransformedVertices[0])
 				v := mat.NewDense(4, 1, nil)
-				v.Sub(face.TransformedVertices[2], face.TransformedVertices[1])
+				fastDenseMatSub(v, face.TransformedVertices[2], face.TransformedVertices[1])
 				face.FaceNormal = mat.NewVecDense(3, []float64{
 					u.At(1, 0)*v.At(2, 0) - u.At(2, 0)*v.At(1, 0),
 					u.At(2, 0)*v.At(0, 0) - u.At(0, 0)*v.At(2, 0),
 					u.At(0, 0)*v.At(1, 0) - u.At(1, 0)*v.At(0, 0),
 				})
 
-				faceVector := mat.NewVecDense(3, []float64{
-					// Perspective
-					(face.TransformedVertices[0].At(0, 0) + face.TransformedVertices[1].At(0, 0) + face.TransformedVertices[2].At(0, 0)) / 3,
-					(face.TransformedVertices[0].At(1, 0) + face.TransformedVertices[1].At(1, 0) + face.TransformedVertices[2].At(1, 0)) / 3,
-					(face.TransformedVertices[0].At(2, 0) + face.TransformedVertices[1].At(2, 0) + face.TransformedVertices[2].At(2, 0)) / 3,
-					// Orthographic
-					//0, 0,
-					//-(face.TransformedVertices[0].At(2, 0) + face.TransformedVertices[1].At(2, 0) + face.TransformedVertices[2].At(2, 0)) / 3,
-				})
+				var faceVector *mat.VecDense
+				switch s.viewType {
+				case ORTHOGRAPHIC:
+					faceVector = mat.NewVecDense(3, []float64{
+						0, 0,
+						-(face.TransformedVertices[0].At(2, 0) + face.TransformedVertices[1].At(2, 0) + face.TransformedVertices[2].At(2, 0)) / 3,
+					})
+				case PERSPECTIVE:
+					faceVector = mat.NewVecDense(3, []float64{
+						(face.TransformedVertices[0].At(0, 0) + face.TransformedVertices[1].At(0, 0) + face.TransformedVertices[2].At(0, 0)) / 3,
+						(face.TransformedVertices[0].At(1, 0) + face.TransformedVertices[1].At(1, 0) + face.TransformedVertices[2].At(1, 0)) / 3,
+						(face.TransformedVertices[0].At(2, 0) + face.TransformedVertices[1].At(2, 0) + face.TransformedVertices[2].At(2, 0)) / 3,
+					})
+				}
 				if mat.Dot(face.FaceNormal, faceVector) < 0 {
 					if face.Visibility == objects.FRONT {
 						face.DoDraw = false
@@ -86,9 +116,12 @@ func (s Scene) drawObjects(canvas *image.RGBA) {
 			}
 
 			if face.DoDraw {
+				// We'll temporarily store copies of the vertices here
+				buffer := mat.NewDense(4, 1, nil)
 				for _, vertex := range face.TransformedVertices {
+					fastClone(buffer, vertex)
 					// FIXME remove copy
-					fastDenseMatMul4x4_4x1(vertex, screenspace, mat.DenseCopyOf(vertex))
+					fastDenseMatMul4x4By4x1(vertex, screenspace, buffer)
 					w := vertex.At(3, 0)
 					vertex.Set(0, 0, vertex.At(0, 0)/w)
 					vertex.Set(1, 0, vertex.At(1, 0)/w)
@@ -131,7 +164,30 @@ func (s Scene) SceneUpdater(width, height, fov float64) {
 	s.DisplayUpdate(width, height)
 }
 
-func fastDenseMatMul4x4_4x4(receiver, a, b *mat.Dense) {
+func fastClone(receiver, a *mat.Dense) {
+	rLen, cLen := a.Dims()
+
+	for r := 0; r < rLen; r++ {
+		for c := 0; c < cLen; c++ {
+			receiver.Set(r, c, a.At(r, c))
+		}
+	}
+}
+
+func fastDenseMatSub(receiver, a, b *mat.Dense) {
+	if a == receiver || b == receiver {
+		log.Fatal("Receiver is also arg")
+	}
+	rLen, cLen := a.Dims()
+
+	for r := 0; r < rLen; r++ {
+		for c := 0; c < cLen; c++ {
+			receiver.Set(r, c, a.At(r, c)-b.At(r, c))
+		}
+	}
+}
+
+func fastDenseMatMul4x4By4x4(receiver, a, b *mat.Dense) {
 	if a == receiver || b == receiver {
 		log.Fatal("Receiver is also arg")
 	}
@@ -146,7 +202,7 @@ func fastDenseMatMul4x4_4x4(receiver, a, b *mat.Dense) {
 	}
 }
 
-func fastDenseMatMul4x4_4x1(receiver, a, b *mat.Dense) {
+func fastDenseMatMul4x4By4x1(receiver, a, b *mat.Dense) {
 	if a == receiver || b == receiver {
 		log.Fatal("Receiver is also arg")
 	}
@@ -158,3 +214,10 @@ func fastDenseMatMul4x4_4x1(receiver, a, b *mat.Dense) {
 				a.At(r, 3)*b.At(3, 0))
 	}
 }
+
+type ViewType uint8
+
+const (
+	ORTHOGRAPHIC = 0
+	PERSPECTIVE  = 1
+)

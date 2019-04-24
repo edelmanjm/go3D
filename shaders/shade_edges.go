@@ -4,7 +4,6 @@ import (
 	"../objects"
 	"image"
 	"image/color"
-	"math"
 )
 
 type ShadeEdges struct {
@@ -18,9 +17,12 @@ func (s ShadeEdges) Shade(object objects.VertexObject, canvas *image.RGBA) {
 			x1, y1 := face.TransformedVertices[0].At(0, 0), face.TransformedVertices[0].At(1, 0)
 			x2, y2 := face.TransformedVertices[2].At(0, 0), face.TransformedVertices[2].At(1, 0)
 
-			s.drawLine(int(math.Round(x0)), int(math.Round(y0)), int(math.Round(x1)), int(math.Round(y1)), canvas)
-			s.drawLine(int(math.Round(x1)), int(math.Round(y1)), int(math.Round(x2)), int(math.Round(y2)), canvas)
-			s.drawLine(int(math.Round(x2)), int(math.Round(y2)), int(math.Round(x0)), int(math.Round(y0)), canvas)
+			//s.drawLine(int(math.Round(x0)), int(math.Round(y0)), int(math.Round(x1)), int(math.Round(y1)), canvas)
+			//s.drawLine(int(math.Round(x1)), int(math.Round(y1)), int(math.Round(x2)), int(math.Round(y2)), canvas)
+			//s.drawLine(int(math.Round(x2)), int(math.Round(y2)), int(math.Round(x0)), int(math.Round(y0)), canvas)
+			s.drawLine(int(x0), int(y0), int(x1), int(y1), canvas)
+			s.drawLine(int(x1), int(y1), int(x2), int(y2), canvas)
+			s.drawLine(int(x2), int(y2), int(x0), int(y0), canvas)
 		}
 	}
 }
