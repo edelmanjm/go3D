@@ -56,7 +56,14 @@ func main() {
 				-1,
 			}),
 		},
-		shaders:           []shaders.Shader{shaders.ShadeEdges{&color.RGBA{0, 0, 0, 0}}},
+		shaders: []shaders.Shader{
+			shaders.ShadeFaces{[]*color.RGBA{
+				{255, 0, 0, 255},
+				{0, 255, 0, 255},
+				{0, 0, 255, 255},
+			}},
+			//shaders.ShadeEdges{&color.RGBA{0, 0, 0, 0}},
+		},
 		nearClippingPlane: -1, farClippingPlane: -10,
 		viewType: PERSPECTIVE,
 	}
@@ -73,7 +80,7 @@ func main() {
 			func() float64 {
 				return float64(time.Now().UnixNano()) / 1e9
 			}}).GetTransformation)
-	obj.Transformations = append(obj.Transformations, (transformations.RotationFromEulerAngles(0, 0, 10)).GetTransformation)
+	//obj.Transformations = append(obj.Transformations, (transformations.RotationFromEulerAngles(0, 0, 10)).GetTransformation)
 	obj.Transformations = append(obj.Transformations, (&transformations.Translation{0, 0, -3}).GetTransformation)
 	myScene.objects = append(myScene.objects, obj)
 

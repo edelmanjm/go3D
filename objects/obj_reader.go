@@ -61,12 +61,12 @@ func ReadFromObj(path string) VertexObject {
 					(normals[firstN-1].At(1, 0) + normals[secondN-1].At(1, 0) + normals[thirdN-1].At(1, 0)) / 3,
 					(normals[firstN-1].At(2, 0) + normals[secondN-1].At(2, 0) + normals[thirdN-1].At(2, 0)) / 3,
 				}),
-				TransformedVertices: [3]*mat.Dense{
+				TransformedVertices: []*mat.Dense{
 					mat.NewDense(4, 1, nil),
 					mat.NewDense(4, 1, nil),
 					mat.NewDense(4, 1, nil),
 				},
-				Visibility: FRONT,
+				Visibility: BOTH,
 			})
 		}
 	}
