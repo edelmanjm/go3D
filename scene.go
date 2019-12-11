@@ -4,7 +4,6 @@ import (
 	"./objects"
 	"./shaders"
 	"gonum.org/v1/gonum/mat"
-	"image"
 	"log"
 	"math"
 )
@@ -24,7 +23,7 @@ func (s Scene) addObject(o objects.VertexObject) {
 	s.objects = append(s.objects, o)
 }
 
-func (s Scene) drawObjects(canvas *image.RGBA) {
+func (s Scene) drawObjects(canvas shaders.Canvas) {
 	screenspace := mat.NewDense(4, 4, nil)
 	fastDenseMatMul4x4By4x4(screenspace, s.translation, s.scale)
 	for _, object := range s.objects {

@@ -6,7 +6,6 @@ import (
 	"./objects/transformations"
 	"./objects/transformations/animations"
 	"./shaders"
-	"github.com/pkg/profile"
 	"gonum.org/v1/gonum/mat"
 	"image"
 	"image/color"
@@ -19,7 +18,7 @@ const fov = 30
 
 func main() {
 
-	defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
+	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 
 	imageChannel := make(chan *image.RGBA, 60)
 	myDisplay := display.CreateDisplay(imageChannel)
@@ -57,31 +56,36 @@ func main() {
 			}),
 		},
 		shaders: []shaders.Shader{
-			shaders.ShadeFaces{[]*color.RGBA{
-				{255, 0, 0, 255},
-				{0, 255, 0, 255},
-				{0, 0, 255, 255},
+			shaders.ShadeFaces{Colors: []*color.RGBA{
+				//{255, 0, 0, 255},
+				//{0, 255, 0, 255},
+				//{0, 0, 255, 255},
+				{43, 142, 198, 255},
+				{41, 35, 114, 255},
+				{181, 23, 37, 255},
+				{33, 48, 52, 255},
+				{163, 183, 190, 255},
 			}},
-			//shaders.ShadeEdges{&color.RGBA{0, 0, 0, 0}},
+			//shaders.ShadeEdges{&color.RGBA{0, 0, 0, 255}},
 		},
 		nearClippingPlane: -1, farClippingPlane: -10,
 		viewType: PERSPECTIVE,
 	}
 	myScene.updater = myScene.SceneUpdater
 
-	obj := objects.ReadFromObj("/Users/jonathan/Desktop/objs/deathmonkey.obj")
+	obj := objects.ReadFromObj("/Users/jonathan/Desktop/objs/bmw2.obj")
 	//obj.Transformations = append(obj.Transformations, (&transformations.Translation{0, -3, 0}).GetTransformation)
 	obj.Transformations = append(obj.Transformations,
 		(&animations.SingleAxisSpin{
-			mat.NewVecDense(3, []float64{
+			Axis: mat.NewVecDense(3, []float64{
 				0, 1, 0,
 			}),
-			10,
-			func() float64 {
+			Operator: 10,
+			GetClock: func() float64 {
 				return float64(time.Now().UnixNano()) / 1e9
 			}}).GetTransformation)
-	//obj.Transformations = append(obj.Transformations, (transformations.RotationFromEulerAngles(0, 0, 10)).GetTransformation)
-	obj.Transformations = append(obj.Transformations, (&transformations.Translation{0, 0, -3}).GetTransformation)
+	//obj.Transformations = append(obj.Transformations, (transformations.RotationFromEulerAngles(0, math.Pi/7, 0)).GetTransformation)
+	obj.Transformations = append(obj.Transformations, (&transformations.Translation{0, -2, -6}).GetTransformation)
 	myScene.objects = append(myScene.objects, obj)
 
 	//obj := objects.ReadFromObj("/Users/jonathan/Desktop/objs/fox.obj")
@@ -112,11 +116,16 @@ func main() {
 		var lastTime time.Time
 		for {
 			lastTime = time.Now()
-			x, y := myDisplay.GetDimensions()
-			frame := genBlankCanvas(x, y)
+			w, h := myDisplay.GetDimensions()
+			frame := genBlankCanvas(w, h)
+			zBuffer := genBlankZBuffer(w, h)
 			// TODO this probably doesn't actually need to occur every frame
-			myScene.updater(float64(x), float64(y), fov)
-			myScene.drawObjects(frame)
+			myScene.updater(float64(w), float64(h), fov)
+			myScene.drawObjects(shaders.Canvas{
+				Image:      frame,
+				ZBuffer:    zBuffer,
+				UseZBuffer: true,
+			})
 			imageChannel <- frame
 			myDisplay.Refresh()
 			myDisplay.SetFrametime(float64(time.Since(lastTime).Nanoseconds() / 1e6))
@@ -132,4 +141,15 @@ func genBlankCanvas(w, h int) *image.RGBA {
 		canvas.Pix[i] = 255
 	}
 	return canvas
+}
+
+func genBlankZBuffer(w, h int) [][]float64 {
+	zBuffer := make([][]float64, w)
+	for c := 0; c < w; c++ {
+		zBuffer[c] = make([]float64, h)
+		for r := 0; r < h; r++ {
+			zBuffer[c][r] = -1
+		}
+	}
+	return zBuffer
 }
