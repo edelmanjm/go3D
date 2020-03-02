@@ -12,7 +12,7 @@ type Canvas struct {
 }
 
 func (c *Canvas) SetRGBA(x int, y int, z float64, color color.RGBA) bool {
-	if 0 < x && x < len(c.ZBuffer) && 0 < y && y < len(c.ZBuffer[0]) {
+	if 0 <= x && x < len(c.ZBuffer) && 0 <= y && y < len(c.ZBuffer[0]) {
 		// FIXME because line drawing issues
 		if y > len(c.ZBuffer[0]) {
 			return true

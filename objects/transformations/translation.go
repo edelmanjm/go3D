@@ -14,3 +14,11 @@ func (translation *Translation) GetTransformation() *mat.Dense {
 		0, 0, 0, 1,
 	})
 }
+
+func (translation *Translation) Multiply(other *Translation) *Translation {
+	return &Translation{
+		X: translation.X + other.X,
+		Y: translation.Y + other.Y,
+		Z: translation.Z + other.Z,
+	}
+}

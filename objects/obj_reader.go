@@ -66,7 +66,7 @@ func ReadFromObj(path string) VertexObject {
 					mat.NewDense(4, 1, nil),
 					mat.NewDense(4, 1, nil),
 				},
-				Visibility: BOTH,
+				Visibility: FRONT,
 			})
 		}
 	}
