@@ -6,6 +6,7 @@ import (
 	"gonum.org/v1/gonum/mat"
 	"log"
 	"math"
+	"sync"
 )
 
 type Scene struct {
@@ -41,11 +42,11 @@ func (s Scene) drawObjects(canvas shaders.Canvas) {
 			a := mat.DenseCopyOf(objectMat)
 			b := mat.NewDense(4, 4, nil)
 			i := 0
-			for _, mat := range object.Transformations {
+			for _, transformationMat := range object.Transformations {
 				if i%2 == 0 {
-					fastDenseMatMul4x4By4x4(b, mat(), a)
+					fastDenseMatMul4x4By4x4(b, transformationMat(), a)
 				} else {
-					fastDenseMatMul4x4By4x4(a, mat(), b)
+					fastDenseMatMul4x4By4x4(a, transformationMat(), b)
 				}
 				i++
 			}
@@ -64,70 +65,79 @@ func (s Scene) drawObjects(canvas shaders.Canvas) {
 		case PERSPECTIVE:
 			fastDenseMatMul4x4By4x4(objectMat, s.projection, mat.DenseCopyOf(objectMat))
 		}
-		for _, face := range object.Faces {
-			for i, vertex := range face.RawVertices {
-				fastDenseMatMul4x4By4x1(face.TransformedVertices[i], objectMat, vertex)
-				w := face.TransformedVertices[i].At(3, 0)
-				face.TransformedVertices[i].Set(0, 0, face.TransformedVertices[i].At(0, 0)/w)
-				face.TransformedVertices[i].Set(1, 0, face.TransformedVertices[i].At(1, 0)/w)
-				face.TransformedVertices[i].Set(2, 0, face.TransformedVertices[i].At(2, 0)/w)
-			}
-			if face.Visibility != objects.BOTH {
-				u := mat.NewDense(4, 1, nil)
-				fastDenseMatSub(u, face.TransformedVertices[1], face.TransformedVertices[0])
-				v := mat.NewDense(4, 1, nil)
-				fastDenseMatSub(v, face.TransformedVertices[2], face.TransformedVertices[1])
-				face.FaceNormal = mat.NewVecDense(3, []float64{
-					u.At(1, 0)*v.At(2, 0) - u.At(2, 0)*v.At(1, 0),
-					u.At(2, 0)*v.At(0, 0) - u.At(0, 0)*v.At(2, 0),
-					u.At(0, 0)*v.At(1, 0) - u.At(1, 0)*v.At(0, 0),
-				})
 
-				var faceVector *mat.VecDense
-				switch s.viewType {
-				case ORTHOGRAPHIC:
-					faceVector = mat.NewVecDense(3, []float64{
-						0, 0,
-						-(face.TransformedVertices[0].At(2, 0) + face.TransformedVertices[1].At(2, 0) + face.TransformedVertices[2].At(2, 0)) / 3,
-					})
-				case PERSPECTIVE:
-					faceVector = mat.NewVecDense(3, []float64{
-						(face.TransformedVertices[0].At(0, 0) + face.TransformedVertices[1].At(0, 0) + face.TransformedVertices[2].At(0, 0)) / 3,
-						(face.TransformedVertices[0].At(1, 0) + face.TransformedVertices[1].At(1, 0) + face.TransformedVertices[2].At(1, 0)) / 3,
-						(face.TransformedVertices[0].At(2, 0) + face.TransformedVertices[1].At(2, 0) + face.TransformedVertices[2].At(2, 0)) / 3,
-					})
+		// Multithreading
+		var wg sync.WaitGroup
+		wg.Add(len(object.Faces))
+		for _, face := range object.Faces {
+			go func(face *objects.Triangle) {
+				defer wg.Done()
+				for i, vertex := range face.RawVertices {
+					fastDenseMatMul4x4By4x1(face.TransformedVertices[i], objectMat, vertex)
+					w := face.TransformedVertices[i].At(3, 0)
+					face.TransformedVertices[i].Set(0, 0, face.TransformedVertices[i].At(0, 0)/w)
+					face.TransformedVertices[i].Set(1, 0, face.TransformedVertices[i].At(1, 0)/w)
+					face.TransformedVertices[i].Set(2, 0, face.TransformedVertices[i].At(2, 0)/w)
 				}
-				if mat.Dot(face.FaceNormal, faceVector) < 0 {
-					if face.Visibility == objects.FRONT {
-						face.DoDraw = false
+				if face.Visibility != objects.BOTH {
+					u := mat.NewDense(4, 1, nil)
+					fastDenseMatSub(u, face.TransformedVertices[1], face.TransformedVertices[0])
+					v := mat.NewDense(4, 1, nil)
+					fastDenseMatSub(v, face.TransformedVertices[2], face.TransformedVertices[1])
+					face.FaceNormal = mat.NewVecDense(3, []float64{
+						u.At(1, 0)*v.At(2, 0) - u.At(2, 0)*v.At(1, 0),
+						u.At(2, 0)*v.At(0, 0) - u.At(0, 0)*v.At(2, 0),
+						u.At(0, 0)*v.At(1, 0) - u.At(1, 0)*v.At(0, 0),
+					})
+
+					var faceVector *mat.VecDense
+					switch s.viewType {
+					case ORTHOGRAPHIC:
+						faceVector = mat.NewVecDense(3, []float64{
+							0, 0,
+							-(face.TransformedVertices[0].At(2, 0) + face.TransformedVertices[1].At(2, 0) + face.TransformedVertices[2].At(2, 0)) / 3,
+						})
+					case PERSPECTIVE:
+						faceVector = mat.NewVecDense(3, []float64{
+							(face.TransformedVertices[0].At(0, 0) + face.TransformedVertices[1].At(0, 0) + face.TransformedVertices[2].At(0, 0)) / 3,
+							(face.TransformedVertices[0].At(1, 0) + face.TransformedVertices[1].At(1, 0) + face.TransformedVertices[2].At(1, 0)) / 3,
+							(face.TransformedVertices[0].At(2, 0) + face.TransformedVertices[1].At(2, 0) + face.TransformedVertices[2].At(2, 0)) / 3,
+						})
+					}
+					if mat.Dot(face.FaceNormal, faceVector) < 0 {
+						if face.Visibility == objects.FRONT {
+							face.DoDraw = false
+						} else {
+							face.DoDraw = true
+						}
 					} else {
-						face.DoDraw = true
+						if face.Visibility == objects.BACK {
+							face.DoDraw = false
+						} else {
+							face.DoDraw = true
+						}
 					}
 				} else {
-					if face.Visibility == objects.BACK {
-						face.DoDraw = false
-					} else {
-						face.DoDraw = true
+					face.DoDraw = true
+				}
+
+				if face.DoDraw {
+					// We'll temporarily store copies of the vertices here
+					buffer := mat.NewDense(4, 1, nil)
+					for _, vertex := range face.TransformedVertices {
+						fastClone(buffer, vertex)
+						// FIXME remove copy
+						fastDenseMatMul4x4By4x1(vertex, screenspace, buffer)
+						w := vertex.At(3, 0)
+						vertex.Set(0, 0, vertex.At(0, 0)/w)
+						vertex.Set(1, 0, vertex.At(1, 0)/w)
+						vertex.Set(2, 0, vertex.At(2, 0)/w)
 					}
 				}
-			} else {
-				face.DoDraw = true
-			}
-
-			if face.DoDraw {
-				// We'll temporarily store copies of the vertices here
-				buffer := mat.NewDense(4, 1, nil)
-				for _, vertex := range face.TransformedVertices {
-					fastClone(buffer, vertex)
-					// FIXME remove copy
-					fastDenseMatMul4x4By4x1(vertex, screenspace, buffer)
-					w := vertex.At(3, 0)
-					vertex.Set(0, 0, vertex.At(0, 0)/w)
-					vertex.Set(1, 0, vertex.At(1, 0)/w)
-					vertex.Set(2, 0, vertex.At(2, 0)/w)
-				}
-			}
+			}(face)
 		}
+		wg.Wait()
+
 		// TODO don't draw if not within the clipping plane bounds
 		for _, shader := range s.shaders {
 			shader.Shade(object, canvas)
@@ -162,6 +172,9 @@ func (s Scene) SceneUpdater(width, height, fov float64) {
 	s.PerspectiveTransformUpdate(width, height, fov)
 	s.DisplayUpdate(width, height)
 }
+
+// TODO improve with rawrowview?
+// TODO improve with custom setter that doesn't check bounds?
 
 func fastClone(receiver, a *mat.Dense) {
 	rLen, cLen := a.Dims()
