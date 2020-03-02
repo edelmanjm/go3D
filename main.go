@@ -56,7 +56,7 @@ func main() {
 			}),
 		},
 		shaders: []shaders.Shader{
-			shaders.ShadeFaces{Colors: []*color.RGBA{
+			shaders.ShadeFacesInt{Colors: []*color.RGBA{
 				//{255, 0, 0, 255},
 				//{0, 255, 0, 255},
 				//{0, 0, 255, 255},
@@ -66,14 +66,27 @@ func main() {
 				{33, 48, 52, 255},
 				{163, 183, 190, 255},
 			}},
-			//shaders.ShadeEdges{&color.RGBA{0, 0, 0, 255}},
+			//shaders.ShadeEdges{Color: &color.RGBA{R: 0, G: 0, B: 0, A: 255}},
 		},
 		nearClippingPlane: -1, farClippingPlane: -10,
 		viewType: PERSPECTIVE,
 	}
 	myScene.updater = myScene.SceneUpdater
 
-	obj := objects.ReadFromObj("/Users/jonathan/Desktop/objs/bmw2.obj")
+	//tri := objects.ReadFromObj("objs/tri.obj")
+	//tri.Transformations = append(tri.Transformations,
+	//	(&animations.SingleAxisSpin{
+	//		Axis: mat.NewVecDense(3, []float64{
+	//			1, 1, 0,
+	//		}),
+	//		Operator: 50,
+	//		GetClock: func() float64 {
+	//			return float64(time.Now().UnixNano()) / 1e9
+	//		}}).GetTransformation)
+	//tri.Transformations = append(tri.Transformations, (&transformations.Translation{X: 0, Y: -2, Z: -6}).GetTransformation)
+	//myScene.objects = append(myScene.objects, tri)
+
+	obj := objects.ReadFromObj("objs/bmw2.obj")
 	//obj.Transformations = append(obj.Transformations, (&transformations.Translation{0, -3, 0}).GetTransformation)
 	obj.Transformations = append(obj.Transformations,
 		(&animations.SingleAxisSpin{
@@ -85,16 +98,16 @@ func main() {
 				return float64(time.Now().UnixNano()) / 1e9
 			}}).GetTransformation)
 	//obj.Transformations = append(obj.Transformations, (transformations.RotationFromEulerAngles(0, math.Pi/7, 0)).GetTransformation)
-	obj.Transformations = append(obj.Transformations, (&transformations.Translation{0, -2, -6}).GetTransformation)
+	obj.Transformations = append(obj.Transformations, (&transformations.Translation{X: 0, Y: -2, Z: -6}).GetTransformation)
 	myScene.objects = append(myScene.objects, obj)
 
-	//obj := objects.ReadFromObj("/Users/jonathan/Desktop/objs/fox.obj")
+	//obj := objects.ReadFromObj("objs/fox.obj")
 	//obj.Transformations = append(obj.Transformations, (&transformations.Translation{0, -2, -10}).GetTransformation)
 	//obj.Transformations = append(obj.Transformations, (transformations.RotationFromAxisAngle(mat.NewVecDense(3, []float64{0, 1, 0}), math.Pi / 2)).GetTransformation)
 	//obj.Transformations = append(obj.Transformations, (&transformations.Translation{10, 0, 0}).GetTransformation)
 	//myScene.objects = append(myScene.objects, obj)
 
-	//planet1 := objects.ReadFromObj("/Users/jonathan/Desktop/objs/icosphere.obj")
+	//planet1 := objects.ReadFromObj("objs/icosphere.obj")
 	//planet1.Transformations = append(planet1.Transformations, (&animations.SingleAxisSpin{
 	//	mat.NewVecDense(3, []float64{0, 1, 0}),
 	//	10,
@@ -111,6 +124,8 @@ func main() {
 	//	},
 	//}).GetTransformation)
 	//myScene.objects = append(myScene.objects, planet1)
+
+	//output, _ := os.Create("output.png")
 
 	go func() {
 		var lastTime time.Time
@@ -130,6 +145,7 @@ func main() {
 			myDisplay.Refresh()
 			myDisplay.SetFrametime(float64(time.Since(lastTime).Nanoseconds() / 1e6))
 			//fmt.Printf("%d\n", time.Since(lastTime).Nanoseconds() / 1e6)
+			//png.Encode(output, frame)
 		}
 	}()
 	myDisplay.Start()

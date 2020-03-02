@@ -10,6 +10,8 @@ type ShadeFaces struct {
 	Colors []*color.RGBA
 }
 
+// FIXME when a triangle is turning over to show its other side, the area gets small and it has issues
+
 func (s ShadeFaces) Shade(object objects.VertexObject, canvas Canvas) {
 	for faceI, face := range object.Faces {
 		if face.DoDraw {
@@ -17,16 +19,22 @@ func (s ShadeFaces) Shade(object objects.VertexObject, canvas Canvas) {
 			z := (face.TransformedVertices[0].At(2, 0) + face.TransformedVertices[1].At(2, 0) + face.TransformedVertices[2].At(2, 0)) / 3
 
 			color := s.Colors[faceI%len(s.Colors)]
-			sort.Slice(face.TransformedVertices, func(i, j int) bool {
-				return face.TransformedVertices[i].At(1, 0) < face.TransformedVertices[j].At(1, 0)
-			})
-			y0 := face.TransformedVertices[0].At(1, 0)
-			y1 := face.TransformedVertices[1].At(1, 0)
-			y2 := face.TransformedVertices[2].At(1, 0)
-			x0 := face.TransformedVertices[0].At(0, 0)
-			x1 := face.TransformedVertices[1].At(0, 0)
-			x2 := face.TransformedVertices[2].At(0, 0)
 
+			// Make a copy just so we're not messing with the original transformed verticies, not that it should really
+			// matter but whatever
+			sortable := face.TransformedVertices
+			sort.Slice(sortable, func(i, j int) bool {
+				return sortable[i].At(1, 0) < sortable[j].At(1, 0)
+			})
+			// For use in the left/right splitting
+			y0 := sortable[0].At(1, 0)
+			y1 := sortable[1].At(1, 0)
+			y2 := sortable[2].At(1, 0)
+			x0 := sortable[0].At(0, 0)
+			x1 := sortable[1].At(0, 0)
+			x2 := sortable[2].At(0, 0)
+
+			// Main left/right splitting
 			var leftXStep, rightXStep func(y int) (float64, bool)
 			twoSide := func(y int) (float64, bool) {
 				if y == int(y1) {
@@ -40,10 +48,18 @@ func (s ShadeFaces) Shade(object objects.VertexObject, canvas Canvas) {
 			oneSide := func(y int) (float64, bool) {
 				return (x2 - x0) / (y2 - y0), false
 			}
-			if x1 < x0 {
+
+			// If the vertex furthest to the left is vertically between the other two, i.e. if the x value of the middle
+			// y value is the smallest (vice versa for other case)
+			if x1 <= x0 && x1 <= x2 {
 				leftXStep = twoSide
 				rightXStep = oneSide
+			} else if x1 >= x0 && x1 >= x2 {
+				leftXStep = oneSide
+				rightXStep = twoSide
 			} else {
+				// The bottom must be flat
+				// FIXME causing the weird line glitchy bits
 				leftXStep = oneSide
 				rightXStep = twoSide
 			}
@@ -54,6 +70,12 @@ func (s ShadeFaces) Shade(object objects.VertexObject, canvas Canvas) {
 				s.drawHorizontalLine(int(leftX), int(rightX), y, z, color, canvas)
 				leftStep, leftReset := leftXStep(y)
 				rightStep, rightReset := rightXStep(y)
+				if leftStep > 25 {
+					leftStep = 0
+				}
+				if rightStep > 25 {
+					rightStep = 0
+				}
 				if leftReset {
 					leftX = x1
 				} else {
@@ -71,13 +93,6 @@ func (s ShadeFaces) Shade(object objects.VertexObject, canvas Canvas) {
 }
 
 func (s *ShadeFaces) drawHorizontalLine(x0, x1, y int, z float64, color *color.RGBA, canvas Canvas) {
-	// FIXME TEMPORARY HARD CODING
-	if x0 < 0 {
-		x0 = 0
-	}
-	if x1 > 2880 {
-		x1 = 2880
-	}
 	for x := x0; x <= x1; x++ {
 		if canvas.SetRGBA(x, y, z, *color) {
 			return
